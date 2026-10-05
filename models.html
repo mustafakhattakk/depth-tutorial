@@ -1,0 +1,77 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monocular depth estimation models | Depth you can trust</title><meta name="description" content="A research tutorial on reliable monocular depth estimation for assistive navigation by Mustafa Khattak.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Sora:wght@400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css"><link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📏</text></svg>"></head><body><div class="layout"><aside class="side" id="side"><a class="brand" href="index.html">Depth you can trust<small>Monocular depth for assistive navigation</small></a><button class="toggle" aria-expanded="false" aria-controls="navbox" onclick="var s=document.getElementById('side');s.classList.toggle('open');this.setAttribute('aria-expanded',s.classList.contains('open'))">Contents</button><div class="navbox" id="navbox"><nav aria-label="Tutorial parts"><ul class="scale"><li><a href="index.html">Home</a></li><li><a href="intro.html"><span class="n">1</span>Introduction and problem</a></li><li><a href="relative-metric.html"><span class="n">2</span>Relative and metric depth</a></li><li class="on"><a href="models.html" aria-current="page"><span class="n">3</span>Depth models</a></li><li><a href="metric.html"><span class="n">4</span>Relative to metric</a></li><li><a href="uncertainty.html"><span class="n">5</span>Uncertainty</a></li><li><a href="hard-cases.html"><span class="n">6</span>Difficult conditions</a></li><li><a href="video.html"><span class="n">7</span>Depth from video</a></li><li><a href="evaluation.html"><span class="n">8</span>Evaluating models</a></li><li><a href="navigation.html"><span class="n">9</span>Assistive navigation</a></li><li><a href="future.html"><span class="n">10</span>Limitations and future</a></li><li><a href="quiz.html">Quiz</a></li><li><a href="references.html">Annotated bibliography</a></li></ul></nav><div class="ends"><span>start</span><span>finish</span></div></div></aside><main id="main"><div class="wrap"><p class="part">Part 3 of 10</p><h1>Monocular depth estimation models</h1><div class="listen"><span>Listen to this page</span><audio controls preload="none" src="audio/models.mp3">Your browser does not support audio.</audio></div>
+<h2>How a network turns an image into a depth map</h2>
+<p>Nearly all depth networks have an encoder and a decoder. The encoder shrinks the image into compact features that capture context, such as "this is a hallway and that region is a floor." The decoder grows those features back to full resolution and outputs one depth value per pixel, usually with skip connections that pass fine detail straight from the encoder. The difference between models lies in the encoder, the training data and the loss function.</p>
+<h2>MiDaS: robustness through mixed data</h2>
+<p>MiDaS <a class="cite" href="references.html#r3" title="Towards Robust Monocular Depth Estimation: Mixing Datasets for Zero-shot Cross-dataset Transfer">[3]</a> made two contributions that shaped the field. The first is the scale and shift invariant loss. For every training image, the prediction is first aligned to the ground truth with the best possible scale and shift, and only the remaining error is penalized:</p>
+<div class="eq">L_ssi = (1 / 2M) Σ_i | (s·d_i + t) − d*_i |     with (s, t) = argmin over s, t of Σ_i (s·d_i + t − d*_i)²</div>
+<p>Because the alignment absorbs differences in units, datasets with incompatible scales can be mixed. The second contribution is the evaluation protocol: test on datasets never used in training. This zero shot transfer test is much closer to real deployment than reporting accuracy on the training dataset's own test split.</p>
+<h2>DPT: transformers for dense prediction</h2>
+<figure><svg viewBox="0 0 760 230" role="img" aria-label="DPT architecture: image patches, transformer encoder, reassemble, fusion decoder, depth map">
+<defs><marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#4A1D6E"/></marker></defs>
+<g font-family="Sora,sans-serif" font-size="12" fill="#1D1A2B">
+<g fill="#9DB7C9" stroke="#fff"><rect x="15" y="70" width="30" height="30"/><rect x="45" y="70" width="30" height="30"/><rect x="15" y="100" width="30" height="30"/><rect x="45" y="100" width="30" height="30"/></g>
+<text x="45" y="155" text-anchor="middle">16x16 patches</text>
+<path d="M85 100 H120" stroke="#4A1D6E" stroke-width="2.5" marker-end="url(#a2)"/>
+<rect x="128" y="35" width="150" height="130" rx="10" fill="#1E1830"/>
+<text x="203" y="62" text-anchor="middle" fill="#fff" font-weight="600">ViT encoder</text>
+<g fill="#7B3294"><rect x="148" y="78" width="110" height="14" rx="3"/><rect x="148" y="98" width="110" height="14" rx="3"/><rect x="148" y="118" width="110" height="14" rx="3"/><rect x="148" y="138" width="110" height="14" rx="3"/></g>
+<text x="203" y="185" text-anchor="middle">global attention in every layer</text>
+<path d="M285 100 H320" stroke="#4A1D6E" stroke-width="2.5" marker-end="url(#a2)"/>
+<rect x="328" y="35" width="140" height="130" rx="10" fill="#EEEBF5" stroke="#5C586E"/>
+<text x="398" y="62" text-anchor="middle" font-weight="600">Reassemble</text>
+<rect x="348" y="75" width="40" height="40" fill="#C2427A"/><rect x="398" y="85" width="28" height="28" fill="#C2427A"/><rect x="434" y="92" width="18" height="18" fill="#C2427A"/>
+<text x="398" y="140" text-anchor="middle">multi scale maps</text>
+<path d="M475 100 H510" stroke="#4A1D6E" stroke-width="2.5" marker-end="url(#a2)"/>
+<rect x="518" y="35" width="120" height="130" rx="10" fill="#EEEBF5" stroke="#5C586E"/>
+<text x="578" y="62" text-anchor="middle" font-weight="600">Fusion</text><text x="578" y="80" text-anchor="middle" font-weight="600">decoder</text>
+<text x="578" y="120" text-anchor="middle">conv + upsample</text>
+<path d="M645 100 H675" stroke="#4A1D6E" stroke-width="2.5" marker-end="url(#a2)"/>
+<defs><linearGradient id="dm2" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#FCE38A"/><stop offset=".5" stop-color="#E0663F"/><stop offset="1" stop-color="#4A1D6E"/></linearGradient></defs>
+<rect x="682" y="65" width="65" height="70" fill="url(#dm2)"/>
+<text x="714" y="155" text-anchor="middle">depth</text>
+</g></svg><figcaption><b>Figure 4.</b> The DPT architecture. Image patches go through a vision transformer, features from several layers are reassembled at multiple resolutions, and a convolutional decoder fuses them into a depth map. <i>Source: original diagram by the author, redrawn from the architecture described in <a class="cite" href="references.html#r7" title="Vision Transformers for Dense Prediction">[7]</a>.</i></figcaption></figure>
+<p>DPT <a class="cite" href="references.html#r7" title="Vision Transformers for Dense Prediction">[7]</a> replaced the convolutional encoder with a vision transformer. The image is cut into 16 by 16 pixel patches, and every transformer layer lets every patch attend to every other patch. A convolutional network only sees a growing local window, so it can miss the global layout. DPT reassembles features from several transformer layers into maps at different resolutions and fuses them in a convolutional decoder. The result is depth that is more consistent across the whole image, and newer MiDaS releases adopted it.</p>
+<h2>Depth Anything: scale through unlabeled data</h2>
+<p>Depth Anything <a class="cite" href="references.html#r8" title="Depth Anything: Unleashing the Power of Large-Scale Unlabeled Data">[8]</a> asked a different question: what if the bottleneck is data rather than architecture? The authors trained a teacher model on about 1.5 million labeled images, used it to label about 62 million unlabeled images, and trained a student on all of it. Two details made this work: the student had to predict depth on strongly distorted copies of images (color changes, cut and paste mixing), and its features were kept close to those of a frozen DINOv2 encoder, which carries rich semantic knowledge about objects.</p>
+<h2>Depth Anything V2: synthetic labels, real images</h2>
+<figure><svg viewBox="0 0 760 240" role="img" aria-label="Depth Anything V2 training: synthetic images train a teacher, teacher labels real images, students learn from those labels">
+<defs><marker id="a3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#4A1D6E"/></marker></defs>
+<g font-family="Sora,sans-serif" font-size="12.5" fill="#1D1A2B">
+<rect x="10" y="30" width="170" height="70" rx="10" fill="#EEEBF5" stroke="#5C586E"/>
+<text x="95" y="60" text-anchor="middle" font-weight="600">595K synthetic images</text><text x="95" y="80" text-anchor="middle">precise depth labels</text>
+<path d="M185 65 H235" stroke="#4A1D6E" stroke-width="2.5" marker-end="url(#a3)"/>
+<rect x="243" y="25" width="170" height="80" rx="10" fill="#1E1830"/>
+<text x="328" y="58" text-anchor="middle" fill="#fff" font-weight="600">Teacher</text><text x="328" y="80" text-anchor="middle" fill="#B9B3CC">ViT Giant, about 1.3B</text>
+<path d="M328 110 V145" stroke="#4A1D6E" stroke-width="2.5" marker-end="url(#a3)"/>
+<rect x="10" y="150" width="170" height="70" rx="10" fill="#EEEBF5" stroke="#5C586E"/>
+<text x="95" y="180" text-anchor="middle" font-weight="600">62M real images</text><text x="95" y="200" text-anchor="middle">no labels</text>
+<path d="M185 185 H235" stroke="#4A1D6E" stroke-width="2.5" marker-end="url(#a3)"/>
+<rect x="243" y="150" width="170" height="70" rx="10" fill="#FFF4E2" stroke="#F2A33A"/>
+<text x="328" y="180" text-anchor="middle" font-weight="600">Pseudo labels</text><text x="328" y="200" text-anchor="middle">from the teacher</text>
+<path d="M418 185 H468" stroke="#4A1D6E" stroke-width="2.5" marker-end="url(#a3)"/>
+<rect x="476" y="130" width="270" height="105" rx="10" fill="#fff" stroke="#7B3294"/>
+<text x="611" y="155" text-anchor="middle" font-weight="600">Student models</text>
+<rect x="490" y="168" width="55" height="50" rx="6" fill="#F2A33A"/><text x="517" y="198" text-anchor="middle">S</text>
+<rect x="553" y="168" width="55" height="50" rx="6" fill="#E0663F"/><text x="580" y="198" text-anchor="middle" fill="#fff">B</text>
+<rect x="616" y="168" width="55" height="50" rx="6" fill="#C2427A"/><text x="643" y="198" text-anchor="middle" fill="#fff">L</text>
+<rect x="679" y="168" width="55" height="50" rx="6" fill="#7B3294"/><text x="706" y="198" text-anchor="middle" fill="#fff">G</text>
+<text x="611" y="55" text-anchor="middle" fill="#5C586E">optional: fine tune with metric labels</text>
+<text x="611" y="75" text-anchor="middle" fill="#5C586E">Hypersim (indoor), Virtual KITTI (outdoor)</text>
+<path d="M611 125 V90" stroke="#5C586E" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#a3)"/>
+</g></svg><figcaption><b>Figure 5.</b> How Depth Anything V2 is trained. A large teacher learns from precise synthetic labels, labels millions of real images, and smaller students learn from those labels. Metric versions are fine tuned afterwards. <i>Source: original diagram by the author, based on the training pipeline in <a class="cite" href="references.html#r9" title="Depth Anything V2">[9]</a>.</i></figcaption></figure>
+<p>Depth Anything V2 <a class="cite" href="references.html#r9" title="Depth Anything V2">[9]</a> made one bold change. Real depth labels from sensors are noisy, have holes, and are often wrong on glass and thin structures. The authors therefore trained the teacher only on about 595 thousand synthetic images rendered with perfect depth. Synthetic images look different from real ones, so the teacher then labeled about 62 million real images, and students were trained on those pseudo labels. The released students range from about 25 million parameters (Small) to about 335 million (Large), with a 1.3 billion parameter Giant teacher. The authors also released metric versions fine tuned on Hypersim for indoor scenes and Virtual KITTI for outdoor scenes.</p>
+<h2>CNN based versus transformer based approaches</h2>
+<div class="tbl"><table>
+<tr><th></th><th>CNN encoders (early MiDaS, FastDepth)</th><th>Transformer encoders (DPT, Depth Anything)</th></tr>
+<tr><td>Context</td><td>Local, grows with depth of network</td><td>Global from the first layer</td></tr>
+<tr><td>Speed on phones</td><td>Fast and well supported</td><td>Slower, Small variants are usable</td></tr>
+<tr><td>Data needs</td><td>Moderate</td><td>Large, benefits from pretraining</td></tr>
+<tr><td>Typical quality</td><td>Blurrier, weaker zero shot</td><td>Sharper, much stronger zero shot</td></tr>
+</table></div>
+<h2>Generalization to unseen images</h2>
+<p>For an assistive tool, every user's home, office and street is a scene the model has never seen. In my view, zero shot robustness matters more here than the best score on a single benchmark. That is the main reason I focus on Depth Anything V2 in the rest of this tutorial: it was designed around generalization, it comes in a size that can run on a phone, and it has metric versions.</p>
+<nav class="pager" aria-label="Previous and next"><a href="relative-metric.html"><span>Previous</span>Relative and metric depth</a><a class="next" href="metric.html"><span>Next</span>Relative to metric</a></nav><footer>Written by Mustafa Khattak. All diagrams are original unless noted. Citations link to the <a href="references.html">annotated bibliography</a>.</footer></div></main></div></body></html>

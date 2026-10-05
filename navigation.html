@@ -1,0 +1,73 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Application to assistive navigation | Depth you can trust</title><meta name="description" content="A research tutorial on reliable monocular depth estimation for assistive navigation by Mustafa Khattak.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Sora:wght@400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css"><link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📏</text></svg>"></head><body><div class="layout"><aside class="side" id="side"><a class="brand" href="index.html">Depth you can trust<small>Monocular depth for assistive navigation</small></a><button class="toggle" aria-expanded="false" aria-controls="navbox" onclick="var s=document.getElementById('side');s.classList.toggle('open');this.setAttribute('aria-expanded',s.classList.contains('open'))">Contents</button><div class="navbox" id="navbox"><nav aria-label="Tutorial parts"><ul class="scale"><li><a href="index.html">Home</a></li><li><a href="intro.html"><span class="n">1</span>Introduction and problem</a></li><li><a href="relative-metric.html"><span class="n">2</span>Relative and metric depth</a></li><li><a href="models.html"><span class="n">3</span>Depth models</a></li><li><a href="metric.html"><span class="n">4</span>Relative to metric</a></li><li><a href="uncertainty.html"><span class="n">5</span>Uncertainty</a></li><li><a href="hard-cases.html"><span class="n">6</span>Difficult conditions</a></li><li><a href="video.html"><span class="n">7</span>Depth from video</a></li><li><a href="evaluation.html"><span class="n">8</span>Evaluating models</a></li><li class="on"><a href="navigation.html" aria-current="page"><span class="n">9</span>Assistive navigation</a></li><li><a href="future.html"><span class="n">10</span>Limitations and future</a></li><li><a href="quiz.html">Quiz</a></li><li><a href="references.html">Annotated bibliography</a></li></ul></nav><div class="ends"><span>start</span><span>finish</span></div></div></aside><main id="main"><div class="wrap"><p class="part">Part 9 of 10</p><h1>Application to assistive navigation</h1><div class="listen"><span>Listen to this page</span><audio controls preload="none" src="audio/navigation.mp3">Your browser does not support audio.</audio></div>
+<h2>From a depth map to a spoken warning</h2>
+<p>This page puts the pieces together into the design of a phone based navigation aid. Each frame passes through these stages:</p>
+<ol>
+<li>Capture the frame, and read the phone's gravity sensor to know how the camera is tilted.</li>
+<li>Predict metric depth and relative uncertainty (Parts 4 and 5).</li>
+<li>Split the image into left, center and right zones, and ignore pixels that belong to the floor.</li>
+<li>Find the nearest depth in each zone, using a low percentile rather than the minimum so that one noisy pixel cannot trigger an alarm.</li>
+<li>Smooth those distances over time (Part 7).</li>
+<li>Decide what to say, if anything, and say it by voice or vibration.</li>
+</ol>
+<figure><svg viewBox="0 0 640 330" role="img" aria-label="Depth map split into left, center and right zones, with the nearest distance reported in each">
+<defs><linearGradient id="dz" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#FCE38A"/><stop offset=".45" stop-color="#E0663F"/><stop offset=".75" stop-color="#C2427A"/><stop offset="1" stop-color="#4A1D6E"/></linearGradient></defs>
+<g font-family="Sora,sans-serif" font-size="13" fill="#1D1A2B">
+<rect x="40" y="20" width="560" height="240" fill="url(#dz)"/>
+<rect x="250" y="150" width="90" height="90" fill="#F2A33A" stroke="#1D1A2B"/>
+<rect x="470" y="70" width="50" height="120" fill="#C2427A" stroke="#1D1A2B"/>
+<line x1="226" y1="20" x2="226" y2="260" stroke="#fff" stroke-width="3" stroke-dasharray="8 6"/>
+<line x1="414" y1="20" x2="414" y2="260" stroke="#fff" stroke-width="3" stroke-dasharray="8 6"/>
+<rect x="40" y="80" width="560" height="20" fill="none"/>
+<text x="133" y="290" text-anchor="middle" font-weight="600">left: clear, 5.0 m</text>
+<text x="320" y="290" text-anchor="middle" font-weight="600" fill="#C9412B">center: 1.4 m</text>
+<text x="507" y="290" text-anchor="middle" font-weight="600">right: 3.1 m</text>
+<text x="320" y="318" text-anchor="middle" fill="#5C586E">The walking corridor (center) is checked first and spoken first.</text>
+</g></svg><figcaption><b>Figure 10.</b> Zone based hazard detection. The depth map is split into three zones and the nearest distance in each is found. The center zone is the walking corridor. <i>Source: original diagram by the author.</i></figcaption></figure>
+<h2>Prioritizing nearby hazards</h2>
+<p>The center zone is the user's walking corridor and is always checked first. Side zones only matter when they are very close or when the system suggests a direction. A useful way to rank hazards is time to contact: distance divided by walking speed. At a typical speed of about 1.2 meters per second, an obstacle 1.5 meters ahead is little more than one second away, which is roughly the limit for a spoken warning to be useful.</p>
+<h2>Try it: guidance simulator</h2>
+<p>Move the sliders to see how the system from Part 5 would respond to different distances and uncertainty levels. Notice how a high uncertainty overrides even a "safe looking" distance.</p>
+<div class="demo" id="demo">
+<label for="d">Nearest distance in center zone <output id="dv"></output></label>
+<input id="d" type="range" min="0.3" max="6" step="0.1" value="2.4">
+<label for="u">Relative uncertainty <output id="uv"></output></label>
+<input id="u" type="range" min="0" max="0.6" step="0.01" value="0.08">
+<label for="t">Confidence threshold <output id="tv"></output></label>
+<input id="t" type="range" min="0.05" max="0.5" step="0.01" value="0.2">
+<div class="say" id="say" aria-live="polite"></div>
+</div>
+<h2>Comparison with other sensing approaches</h2>
+<p>Monocular depth is not the only option. The table compares it with sensors commonly considered for assistive devices.</p>
+<div class="tbl"><table>
+<tr><th>Approach</th><th>Cost</th><th>Range</th><th>Glass</th><th>Main limitation</th></tr>
+<tr><td>Monocular depth (this tutorial)</td><td>None beyond the phone</td><td>Whole scene</td><td>Often fails</td><td>Estimated, not measured</td></tr>
+<tr><td>Phone LiDAR</td><td>High end phones only</td><td>About 5 m</td><td>Often fails</td><td>Limited phones, low resolution</td></tr>
+<tr><td>Stereo camera</td><td>Extra hardware</td><td>Grows with camera spacing</td><td>Often fails</td><td>Weak on plain walls</td></tr>
+<tr><td>Ultrasonic sensor</td><td>Cheap</td><td>A few meters, one direction</td><td>Detects it</td><td>No scene detail</td></tr>
+</table></div>
+<p>The interesting point is that glass defeats most optical sensors, while a cheap ultrasonic sensor detects it. Combining monocular depth for scene detail with an ultrasonic sensor for the straight ahead check is, in my view, the most realistic low cost design.</p>
+<h2>Safety issues when the prediction is wrong</h2>
+<p>The device should complement the cane, never replace it, and should say so during setup. Warnings must be short and predictable. And the "uncertain" message must be treated as a normal output, tested with users, rather than as an error message.</p>
+<script>
+(function(){
+ var d=document.getElementById('d'),u=document.getElementById('u'),t=document.getElementById('t'),s=document.getElementById('say');
+ function run(){
+  var dv=+d.value,uv=+u.value,tv=+t.value,pm=(dv*uv).toFixed(1);
+  document.getElementById('dv').textContent=dv.toFixed(1)+' m';
+  document.getElementById('uv').textContent='plus or minus '+Math.round(uv*100)+'% ('+pm+' m)';
+  document.getElementById('tv').textContent=Math.round(tv*100)+'%';
+  var cls='say',msg,why;
+  if(uv>tv){cls+=' unsure';msg='"Depth estimate uncertain. Move the camera slowly."';why='Uncertainty is above the threshold, so no distance is spoken.';}
+  else if(dv<1.5){cls+=' stop';msg='"Stop. Obstacle about '+dv.toFixed(1)+' meters ahead."';why='About '+(dv/1.2).toFixed(1)+' seconds to contact at walking speed.';}
+  else if(dv<3){cls+=' warn';msg='"Obstacle about '+Math.round(dv)+' meters ahead."';why='Close enough to mention, not yet urgent.';}
+  else{msg='(silent)';why='Path looks clear and the estimate is confident, so the app stays quiet.';}
+  s.className=cls;s.innerHTML=msg+'<small>'+why+'</small>';
+ }
+ [d,u,t].forEach(function(e){e.addEventListener('input',run)});run();
+})();
+</script>
+<nav class="pager" aria-label="Previous and next"><a href="evaluation.html"><span>Previous</span>Evaluating models</a><a class="next" href="future.html"><span>Next</span>Limitations and future</a></nav><footer>Written by Mustafa Khattak. All diagrams are original unless noted. Citations link to the <a href="references.html">annotated bibliography</a>.</footer></div></main></div></body></html>

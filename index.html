@@ -1,0 +1,47 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reliable Monocular Depth Estimation for Assistive Navigation | Depth you can trust</title><meta name="description" content="A research tutorial on reliable monocular depth estimation for assistive navigation by Mustafa Khattak.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Sora:wght@400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css"><link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📏</text></svg>"></head><body><div class="layout"><aside class="side" id="side"><a class="brand" href="index.html">Depth you can trust<small>Monocular depth for assistive navigation</small></a><button class="toggle" aria-expanded="false" aria-controls="navbox" onclick="var s=document.getElementById('side');s.classList.toggle('open');this.setAttribute('aria-expanded',s.classList.contains('open'))">Contents</button><div class="navbox" id="navbox"><nav aria-label="Tutorial parts"><ul class="scale"><li class="on"><a href="index.html" aria-current="page">Home</a></li><li><a href="intro.html"><span class="n">1</span>Introduction and problem</a></li><li><a href="relative-metric.html"><span class="n">2</span>Relative and metric depth</a></li><li><a href="models.html"><span class="n">3</span>Depth models</a></li><li><a href="metric.html"><span class="n">4</span>Relative to metric</a></li><li><a href="uncertainty.html"><span class="n">5</span>Uncertainty</a></li><li><a href="hard-cases.html"><span class="n">6</span>Difficult conditions</a></li><li><a href="video.html"><span class="n">7</span>Depth from video</a></li><li><a href="evaluation.html"><span class="n">8</span>Evaluating models</a></li><li><a href="navigation.html"><span class="n">9</span>Assistive navigation</a></li><li><a href="future.html"><span class="n">10</span>Limitations and future</a></li><li><a href="quiz.html">Quiz</a></li><li><a href="references.html">Annotated bibliography</a></li></ul></nav><div class="ends"><span>start</span><span>finish</span></div></div></aside><main id="main"><div class="hero"><h1>Reliable Monocular Depth Estimation for Assistive Navigation</h1><p>Metric depth, uncertainty and failure detection from a single camera, and what it takes to make them safe enough to guide a blind or low vision person.</p><p class="by">By Mustafa Khattak, graduate research tutorial in computer vision, California State University, East Bay, Fall 2026</p><svg viewBox="0 0 960 300" role="img" aria-label="A hallway drawn as a depth map: walls and floor go from yellow near the viewer to deep purple at the far end">
+<defs>
+<linearGradient id="fl" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#FCE38A"/><stop offset=".35" stop-color="#F2A33A"/><stop offset=".6" stop-color="#E0663F"/><stop offset=".8" stop-color="#C2427A"/><stop offset="1" stop-color="#7B3294"/></linearGradient>
+<linearGradient id="wl" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FCE38A"/><stop offset=".4" stop-color="#E0663F"/><stop offset=".75" stop-color="#C2427A"/><stop offset="1" stop-color="#4A1D6E"/></linearGradient>
+<linearGradient id="wr" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#FCE38A"/><stop offset=".4" stop-color="#E0663F"/><stop offset=".75" stop-color="#C2427A"/><stop offset="1" stop-color="#4A1D6E"/></linearGradient>
+</defs>
+<rect width="960" height="300" fill="#2B0E4A"/>
+<polygon points="0,0 400,110 400,210 0,300" fill="url(#wl)"/>
+<polygon points="960,0 560,110 560,210 960,300" fill="url(#wr)"/>
+<polygon points="0,300 400,210 560,210 960,300" fill="url(#fl)"/>
+<polygon points="0,0 400,110 560,110 960,0" fill="#3A1660"/>
+<rect x="400" y="110" width="160" height="100" fill="#2B0E4A"/>
+<rect x="455" y="240" width="64" height="38" fill="#E8783E" stroke="#1E1830" stroke-width="2"/>
+<rect x="455" y="200" width="64" height="40" fill="#E8783E" stroke="#1E1830" stroke-width="2"/>
+<g font-family="Sora,sans-serif" font-size="15" fill="#1E1830" font-weight="600"><text x="530" y="262">chair, about 2.1 m</text></g>
+</svg></div><div class="wrap"><p class="herocap"><b>Figure 1.</b> A hallway drawn as a depth map, the kind of output this tutorial is about. Warm yellow means near, deep purple means far. <i>Source: original illustration by the author.</i></p></div><div class="wrap"><div class="listen"><span>Listen to this page</span><audio controls preload="none" src="audio/index.mp3">Your browser does not support audio.</audio></div>
+<p>A phone camera can already tell you that there is a chair in the room. This tutorial is about the harder question a blind or low vision person actually needs answered: how far away is it, and can the system be trusted when it says so?</p>
+<p>We will move from the basics of single camera depth estimation to the models that define the current state of the art, then focus on three things that matter for safety: getting distances in real meters, measuring how confident the model is, and spotting the situations where it is likely to be wrong.</p>
+<h2>What you will learn</h2>
+<ul>
+<li>Why one camera cannot directly measure distance, and how networks estimate it anyway.</li>
+<li>The difference between relative and metric depth, and how to convert one into the other, with working code.</li>
+<li>How MiDaS, DPT, Depth Anything V2, ZoeDepth and Depth Pro differ and when to choose each.</li>
+<li>How to estimate uncertainty, smooth depth over video, and evaluate a model honestly.</li>
+<li>How these pieces fit into an assistive navigation system, including where they still fall short.</li>
+</ul>
+<h2>How to use this tutorial</h2>
+<p>Work through the ten parts in order. Each takes two to four minutes to read, so the whole tutorial takes about 25 minutes. Every page starts with an audio narration you can play instead of reading. Numbers in brackets such as <a class="cite" href="references.html#r1" title="Depth Map Prediction from a Single Image using a Multi-Scale Deep Network">[1]</a> link to the annotated bibliography. Part 9 has an interactive guidance simulator, and a short quiz at the end lets you check your understanding.</p>
+<h2>Contents</h2>
+<ol class="toc">
+<li><span class="n">1</span><div><a href="intro.html">Introduction and problem definition</a><p>Why one camera cannot measure distance and why errors matter for blind users.</p></div></li>
+<li><span class="n">2</span><div><a href="relative-metric.html">Relative depth and metric depth</a><p>Ordering versus meters, and the scale ambiguity behind it.</p></div></li>
+<li><span class="n">3</span><div><a href="models.html">Monocular depth estimation models</a><p>MiDaS, DPT, Depth Anything and Depth Anything V2.</p></div></li>
+<li><span class="n">4</span><div><a href="metric.html">Converting relative depth into metric depth</a><p>Fine tuning versus calibration, with working code.</p></div></li>
+<li><span class="n">5</span><div><a href="uncertainty.html">Uncertainty and confidence in depth estimation</a><p>Measuring confidence and gating guidance on it.</p></div></li>
+<li><span class="n">6</span><div><a href="hard-cases.html">Difficult real world conditions</a><p>Glass, mirrors, darkness, thin objects and more.</p></div></li>
+<li><span class="n">7</span><div><a href="video.html">Depth estimation from video</a><p>Flicker, temporal consistency and a safe smoothing filter.</p></div></li>
+<li><span class="n">8</span><div><a href="evaluation.html">Evaluating depth models</a><p>Metrics, reported results and what benchmarks miss.</p></div></li>
+<li><span class="n">9</span><div><a href="navigation.html">Application to assistive navigation</a><p>A complete design plus an interactive simulator.</p></div></li>
+<li><span class="n">10</span><div><a href="future.html">Limitations, current challenges and future research</a><p>Limitations, open problems and conclusions.</p></div></li>
+<li><span class="n">?</span><div><a href="quiz.html">Quiz</a><p>Ten questions to check your understanding.</p></div></li>
+<li><span class="n">[ ]</span><div><a href="references.html">Annotated bibliography</a><p>All 20 sources with synopsis and reliability.</p></div></li></ol>
+<nav class="pager" aria-label="Previous and next"><a class="next" href="intro.html"><span>Next</span>Introduction and problem</a></nav><footer>Written by Mustafa Khattak. All diagrams are original unless noted. Citations link to the <a href="references.html">annotated bibliography</a>.</footer></div></main></div></body></html>

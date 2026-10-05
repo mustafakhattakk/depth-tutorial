@@ -1,0 +1,69 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quiz | Depth you can trust</title><meta name="description" content="A research tutorial on reliable monocular depth estimation for assistive navigation by Mustafa Khattak.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Sora:wght@400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css"><link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📏</text></svg>"></head><body><div class="layout"><aside class="side" id="side"><a class="brand" href="index.html">Depth you can trust<small>Monocular depth for assistive navigation</small></a><button class="toggle" aria-expanded="false" aria-controls="navbox" onclick="var s=document.getElementById('side');s.classList.toggle('open');this.setAttribute('aria-expanded',s.classList.contains('open'))">Contents</button><div class="navbox" id="navbox"><nav aria-label="Tutorial parts"><ul class="scale"><li><a href="index.html">Home</a></li><li><a href="intro.html"><span class="n">1</span>Introduction and problem</a></li><li><a href="relative-metric.html"><span class="n">2</span>Relative and metric depth</a></li><li><a href="models.html"><span class="n">3</span>Depth models</a></li><li><a href="metric.html"><span class="n">4</span>Relative to metric</a></li><li><a href="uncertainty.html"><span class="n">5</span>Uncertainty</a></li><li><a href="hard-cases.html"><span class="n">6</span>Difficult conditions</a></li><li><a href="video.html"><span class="n">7</span>Depth from video</a></li><li><a href="evaluation.html"><span class="n">8</span>Evaluating models</a></li><li><a href="navigation.html"><span class="n">9</span>Assistive navigation</a></li><li><a href="future.html"><span class="n">10</span>Limitations and future</a></li><li class="on"><a href="quiz.html" aria-current="page">Quiz</a></li><li><a href="references.html">Annotated bibliography</a></li></ul></nav><div class="ends"><span>start</span><span>finish</span></div></div></aside><main id="main"><div class="wrap"><p class="part">Check your understanding</p><h1>Quiz</h1><div class="listen"><span>Listen to this page</span><audio controls preload="none" src="audio/quiz.mp3">Your browser does not support audio.</audio></div><p>Ten questions covering the whole tutorial. Choose an answer to see whether it is right and why. Nothing is recorded.</p>
+<div class="q" data-a="1"><h3>1. Why can a single image not determine absolute depth through geometry alone?</h3>
+<button class="opt" data-i="0">The camera sensor is too low resolution</button>
+<button class="opt" data-i="1">Scaling the whole scene up or down produces the same image</button>
+<button class="opt" data-i="2">Depth networks cannot process color</button>
+<button class="opt" data-i="3">Phone lenses distort the image</button>
+<p class="why">Projection divides by depth, so (X, Y, Z) and (2X, 2Y, 2Z) land on the same pixel. Networks must rely on learned cues instead.</p></div>
+<div class="q" data-a="2"><h3>2. A relative depth model tells you that a door is closer than a wall. What does it NOT tell you?</h3>
+<button class="opt" data-i="0">Which object is closer</button>
+<button class="opt" data-i="1">The layout of the scene</button>
+<button class="opt" data-i="2">The distance to the door in meters</button>
+<button class="opt" data-i="3">Where the door is in the image</button>
+<p class="why">Relative depth is only correct up to an unknown scale and shift, so distances in meters are missing.</p></div>
+<div class="q" data-a="1"><h3>3. What does the scale and shift invariant loss used by MiDaS allow?</h3>
+<button class="opt" data-i="0">Training without any images</button>
+<button class="opt" data-i="1">Mixing datasets with different and unknown depth scales</button>
+<button class="opt" data-i="2">Running the model on a microcontroller</button>
+<button class="opt" data-i="3">Predicting depth in meters directly</button>
+<p class="why">Each prediction is aligned to the ground truth before computing the error, so datasets with incompatible units can be combined.</p></div>
+<div class="q" data-a="1"><h3>4. What was the key data change in Depth Anything V2?</h3>
+<button class="opt" data-i="0">Using only depth from 3D movies</button>
+<button class="opt" data-i="1">Training the teacher only on precise synthetic images, then pseudo labeling real images</button>
+<button class="opt" data-i="2">Removing all real images from student training</button>
+<button class="opt" data-i="3">Training on a single indoor dataset</button>
+<p class="why">Synthetic labels are precise, and pseudo labeled real images close the gap between synthetic and real appearance.</p></div>
+<div class="q" data-a="1"><h3>5. A relative model predicts disparity 0.8 at 1 m and 0.2 at 4 m. Using scale and shift alignment, what is the depth of a pixel with disparity 0.5?</h3>
+<button class="opt" data-i="0">1.0 m</button>
+<button class="opt" data-i="1">1.6 m</button>
+<button class="opt" data-i="2">2.5 m</button>
+<button class="opt" data-i="3">3.2 m</button>
+<p class="why">Solving gives s = 1.25 and t = 0. Then 1.25 × 0.5 = 0.625 inverse meters, which is 1.6 m.</p></div>
+<div class="q" data-a="1"><h3>6. Glass and mirrors are hard mainly because...</h3>
+<button class="opt" data-i="0">They are too small to see</button>
+<button class="opt" data-i="1">The model sees the scene behind or reflected in them and reports that distance</button>
+<button class="opt" data-i="2">They are always in the dark</button>
+<button class="opt" data-i="3">They move too fast</button>
+<p class="why">The visible content is far away or virtual, so the model reports a large distance at the surface the user could walk into.</p></div>
+<div class="q" data-a="2"><h3>7. Which uncertainty method works on a frozen pretrained model without retraining?</h3>
+<button class="opt" data-i="0">Deep ensembles</button>
+<button class="opt" data-i="1">A predictive variance head</button>
+<button class="opt" data-i="2">Test time augmentation</button>
+<button class="opt" data-i="3">Training a second network</button>
+<p class="why">Flipping or relighting the input and measuring disagreement only needs extra forward passes.</p></div>
+<div class="q" data-a="1"><h3>8. In the guidance logic, what should happen when uncertainty is above the threshold?</h3>
+<button class="opt" data-i="0">Speak the distance anyway</button>
+<button class="opt" data-i="1">Say the estimate is uncertain and ask the user to move the camera slowly</button>
+<button class="opt" data-i="2">Stay silent</button>
+<button class="opt" data-i="3">Always say stop</button>
+<p class="why">An honest uncertain message avoids confidently wrong guidance and gives the model a better view.</p></div>
+<div class="q" data-a="1"><h3>9. Why does the smoothing filter in Part 7 accept a much closer reading immediately?</h3>
+<button class="opt" data-i="0">To save battery</button>
+<button class="opt" data-i="1">Because a delayed warning about a real nearby obstacle could cause a collision</button>
+<button class="opt" data-i="2">Because closer readings are always correct</button>
+<button class="opt" data-i="3">To make the output flicker less</button>
+<p class="why">False alarms are inconvenient, but delayed real warnings are dangerous, so the filter is deliberately asymmetric.</p></div>
+<div class="q" data-a="2"><h3>10. Which metric would most directly measure the most dangerous failure for navigation?</h3>
+<button class="opt" data-i="0">RMSE over all pixels</button>
+<button class="opt" data-i="1">Average processing speed</button>
+<button class="opt" data-i="2">The false clear rate in the walking corridor</button>
+<button class="opt" data-i="3">δ1 on outdoor scenes</button>
+<p class="why">Saying the path is clear when it is not is the error most likely to cause harm, so it deserves its own measurement.</p></div>
+<div class="score" id="score" aria-live="polite">Score: 0 of 10 answered</div>
+<script>
+(function(){var right=0,done=0;document.querySelectorAll('.q').forEach(function(q){var a=+q.dataset.a;q.querySelectorAll('.opt').forEach(function(b){b.addEventListener('click',function(){if(q.classList.contains('done'))return;q.classList.add('done');done++;var i=+b.dataset.i;if(i===a){right++;b.classList.add('right');}else{b.classList.add('wrong');q.querySelectorAll('.opt')[a].classList.add('right');}q.querySelectorAll('.opt').forEach(function(x){x.disabled=true});document.getElementById('score').textContent='Score: '+right+' correct out of '+done+' answered'+(done===10?'. Finished!':'');});});});})();
+</script><nav class="pager" aria-label="Previous and next"><a href="future.html"><span>Previous</span>Limitations and future</a><a class="next" href="references.html"><span>Next</span>Annotated bibliography</a></nav><footer>Written by Mustafa Khattak. All diagrams are original unless noted. Citations link to the <a href="references.html">annotated bibliography</a>.</footer></div></main></div></body></html>

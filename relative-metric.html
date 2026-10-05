@@ -1,0 +1,46 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relative depth and metric depth | Depth you can trust</title><meta name="description" content="A research tutorial on reliable monocular depth estimation for assistive navigation by Mustafa Khattak.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Sora:wght@400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css"><link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📏</text></svg>"></head><body><div class="layout"><aside class="side" id="side"><a class="brand" href="index.html">Depth you can trust<small>Monocular depth for assistive navigation</small></a><button class="toggle" aria-expanded="false" aria-controls="navbox" onclick="var s=document.getElementById('side');s.classList.toggle('open');this.setAttribute('aria-expanded',s.classList.contains('open'))">Contents</button><div class="navbox" id="navbox"><nav aria-label="Tutorial parts"><ul class="scale"><li><a href="index.html">Home</a></li><li><a href="intro.html"><span class="n">1</span>Introduction and problem</a></li><li class="on"><a href="relative-metric.html" aria-current="page"><span class="n">2</span>Relative and metric depth</a></li><li><a href="models.html"><span class="n">3</span>Depth models</a></li><li><a href="metric.html"><span class="n">4</span>Relative to metric</a></li><li><a href="uncertainty.html"><span class="n">5</span>Uncertainty</a></li><li><a href="hard-cases.html"><span class="n">6</span>Difficult conditions</a></li><li><a href="video.html"><span class="n">7</span>Depth from video</a></li><li><a href="evaluation.html"><span class="n">8</span>Evaluating models</a></li><li><a href="navigation.html"><span class="n">9</span>Assistive navigation</a></li><li><a href="future.html"><span class="n">10</span>Limitations and future</a></li><li><a href="quiz.html">Quiz</a></li><li><a href="references.html">Annotated bibliography</a></li></ul></nav><div class="ends"><span>start</span><span>finish</span></div></div></aside><main id="main"><div class="wrap"><p class="part">Part 2 of 10</p><h1>Relative depth and metric depth</h1><div class="listen"><span>Listen to this page</span><audio controls preload="none" src="audio/relative-metric.mp3">Your browser does not support audio.</audio></div>
+<h2>What relative depth means</h2>
+<p>A relative depth map gets the order right but not the units. It can tell you that the chair is closer than the door, and roughly how the scene is laid out, but its values have an unknown scale. Many popular models go one step further and predict inverse depth (often called disparity, because large values mean close) that is only correct up to an unknown scale <i>s</i> and shift <i>t</i> for each image. In other words, the true inverse depth equals <i>s</i> times the prediction plus <i>t</i>, and the model does not know <i>s</i> or <i>t</i>.</p>
+<p>MiDaS was trained this way on purpose <a class="cite" href="references.html#r3" title="Towards Robust Monocular Depth Estimation: Mixing Datasets for Zero-shot Cross-dataset Transfer">[3]</a>. Its training data mixed laser scans, stereo pairs and frames from 3D movies, each with a different and often unknown scale. By only asking the network to be right up to scale and shift, all these sources could be used together.</p>
+<h2>What metric depth means</h2>
+<p>A metric depth map gives values in real units, normally meters. The difference is easy to state with an example:</p>
+<ul>
+<li>Relative: "Chair A is closer than chair B, and B is roughly twice as far."</li>
+<li>Metric: "Chair A is 1.5 meters away and chair B is 3.1 meters away."</li>
+</ul>
+<p>Only the second sentence lets the system decide whether to warn the user now or wait.</p>
+<h2>Scale ambiguity in monocular vision</h2>
+<figure><svg viewBox="0 0 760 260" role="img" aria-label="A small box near the camera and a large box far away produce the same image">
+<g font-family="Sora,sans-serif" font-size="13" fill="#1D1A2B">
+<rect x="20" y="105" width="44" height="50" rx="6" fill="#1E1830"/><circle cx="64" cy="130" r="9" fill="#F2A33A"/>
+<text x="42" y="180" text-anchor="middle">camera</text>
+<line x1="70" y1="130" x2="740" y2="30" stroke="#C2427A" stroke-dasharray="6 5"/>
+<line x1="70" y1="130" x2="740" y2="230" stroke="#C2427A" stroke-dasharray="6 5"/>
+<rect x="230" y="96" width="40" height="68" fill="#F2A33A" stroke="#1D1A2B"/>
+<text x="250" y="190" text-anchor="middle">small box, 1 m</text>
+<rect x="580" y="58" width="96" height="144" fill="#7B3294" stroke="#1D1A2B" opacity=".9"/>
+<text x="628" y="225" text-anchor="middle">box 3 times larger, 3 m</text>
+<text x="400" y="25" text-anchor="middle" fill="#5C586E">both fill exactly the same rays, so both give the same photo</text>
+</g></svg><figcaption><b>Figure 3.</b> Scale ambiguity. A small box near the camera and a larger box farther away cover the same viewing rays, so a single image cannot tell them apart without prior knowledge. <i>Source: original diagram by the author, illustrating the pinhole projection discussed in <a class="cite" href="references.html#r4" title="Metric3D: Towards Zero-shot Metric 3D Prediction from A Single Image">[4]</a>.</i></figcaption></figure>
+<p>Figure 3 shows the core problem. A small box one meter away and a box three times larger three meters away fill the same rays and produce the same image. A network resolves this by guessing from experience: doors are about two meters tall, so a door filling half the frame is probably a few meters away. That guess breaks for objects without a typical size, such as walls, poles or unusual furniture.</p>
+<p>The camera itself adds a second ambiguity. A phone with a wide lens and a phone with a zoom lens see the same object at the same distance at different sizes. A model trained on one camera can therefore be systematically wrong on another. Metric3D addresses this by converting all training images into a single canonical camera before learning <a class="cite" href="references.html#r4" title="Metric3D: Towards Zero-shot Metric 3D Prediction from A Single Image">[4]</a>.</p>
+<h2>Why metric depth is harder</h2>
+<ul>
+<li><b>Less training data.</b> Metric labels need calibrated sensors. The standard benchmarks are NYU Depth V2 for indoor rooms, captured with a Kinect <a class="cite" href="references.html#r5" title="Indoor Segmentation and Support Inference from RGBD Images (NYU Depth V2 dataset)">[5]</a>, and KITTI for driving, captured with a laser scanner on a car <a class="cite" href="references.html#r6" title="Are we ready for Autonomous Driving? The KITTI Vision Benchmark Suite">[6]</a>. Neither looks like a pedestrian holding a phone.</li>
+<li><b>Dependence on the camera.</b> Focal length and sensor size change the answer, as explained above.</li>
+<li><b>Errors grow with distance.</b> Because many models work in inverse depth, a small error in disparity at the far end of a room becomes a large error in meters.</li>
+</ul>
+<h2>When relative depth is still useful</h2>
+<p>Relative depth is not useless for navigation. It can rank obstacles from nearest to farthest, find the closest object in each part of the image, and reveal sudden jumps in the floor that suggest a step or drop off. If the scale stays roughly constant between frames, the rate at which an obstacle's depth shrinks can even estimate time to contact without knowing meters. The catch is that per image scale can drift between frames, so these tricks need care.</p>
+<div class="tbl"><table>
+<tr><th></th><th>Relative depth</th><th>Metric depth</th></tr>
+<tr><td>Output</td><td>Order and shape, unknown scale</td><td>Distances in meters</td></tr>
+<tr><td>Training data</td><td>Any depth source, even movies</td><td>Calibrated sensors only</td></tr>
+<tr><td>Generalization</td><td>Usually stronger</td><td>Can depend on camera and domain</td></tr>
+<tr><td>Navigation use</td><td>Ranking hazards, finding edges</td><td>"Stop, 1 meter ahead"</td></tr>
+</table></div>
+<nav class="pager" aria-label="Previous and next"><a href="intro.html"><span>Previous</span>Introduction and problem</a><a class="next" href="models.html"><span>Next</span>Depth models</a></nav><footer>Written by Mustafa Khattak. All diagrams are original unless noted. Citations link to the <a href="references.html">annotated bibliography</a>.</footer></div></main></div></body></html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uncertainty and confidence in depth estimation | Depth you can trust</title><meta name="description" content="A research tutorial on reliable monocular depth estimation for assistive navigation by Mustafa Khattak.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Sora:wght@400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css"><link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📏</text></svg>"></head><body><div class="layout"><aside class="side" id="side"><a class="brand" href="index.html">Depth you can trust<small>Monocular depth for assistive navigation</small></a><button class="toggle" aria-expanded="false" aria-controls="navbox" onclick="var s=document.getElementById('side');s.classList.toggle('open');this.setAttribute('aria-expanded',s.classList.contains('open'))">Contents</button><div class="navbox" id="navbox"><nav aria-label="Tutorial parts"><ul class="scale"><li><a href="index.html">Home</a></li><li><a href="intro.html"><span class="n">1</span>Introduction and problem</a></li><li><a href="relative-metric.html"><span class="n">2</span>Relative and metric depth</a></li><li><a href="models.html"><span class="n">3</span>Depth models</a></li><li><a href="metric.html"><span class="n">4</span>Relative to metric</a></li><li class="on"><a href="uncertainty.html" aria-current="page"><span class="n">5</span>Uncertainty</a></li><li><a href="hard-cases.html"><span class="n">6</span>Difficult conditions</a></li><li><a href="video.html"><span class="n">7</span>Depth from video</a></li><li><a href="evaluation.html"><span class="n">8</span>Evaluating models</a></li><li><a href="navigation.html"><span class="n">9</span>Assistive navigation</a></li><li><a href="future.html"><span class="n">10</span>Limitations and future</a></li><li><a href="quiz.html">Quiz</a></li><li><a href="references.html">Annotated bibliography</a></li></ul></nav><div class="ends"><span>start</span><span>finish</span></div></div></aside><main id="main"><div class="wrap"><p class="part">Part 5 of 10</p><h1>Uncertainty and confidence in depth estimation</h1><div class="listen"><span>Listen to this page</span><audio controls preload="none" src="audio/uncertainty.mp3">Your browser does not support audio.</audio></div>
+<h2>Why a depth model should not be trusted equally everywhere</h2>
+<p>A depth network always outputs a number, even for a black glass door at night. Nothing in a plain depth map tells you which pixels are solid estimates and which are guesses. Uncertainty estimation adds a second map that says how much each value can be trusted.</p>
+<h2>What uncertainty means in a depth prediction</h2>
+<p>Kendall and Gal separate two kinds <a class="cite" href="references.html#r12" title="What Uncertainties Do We Need in Bayesian Deep Learning for Computer Vision?">[12]</a>. Aleatoric uncertainty comes from the data itself: glass, darkness, motion blur and textureless walls are hard no matter how good the model is. Epistemic uncertainty comes from the model's limited experience: a staircase seen from an odd angle may simply be unlike anything in training. Aleatoric uncertainty can be predicted by the network directly, by adding an output channel and training it with a loss that lets the model admit doubt at a cost. Epistemic uncertainty needs several different "opinions" from the model.</p>
+<h2>Ways to estimate it</h2>
+<div class="tbl"><table>
+<tr><th>Method</th><th>How it works</th><th>Extra cost</th><th>Works on a frozen model?</th></tr>
+<tr><td>Predictive variance head <a class="cite" href="references.html#r12" title="What Uncertainties Do We Need in Bayesian Deep Learning for Computer Vision?">[12]</a></td><td>Network outputs depth and a spread</td><td>Almost none</td><td>No, needs training</td></tr>
+<tr><td>Monte Carlo dropout <a class="cite" href="references.html#r13" title="Dropout as a Bayesian Approximation: Representing Model Uncertainty in Deep Learning">[13]</a></td><td>Keep dropout on, run several times, measure spread</td><td>N forward passes</td><td>Only if the model has dropout</td></tr>
+<tr><td>Deep ensembles <a class="cite" href="references.html#r14" title="Simple and Scalable Predictive Uncertainty Estimation using Deep Ensembles">[14]</a></td><td>Train several models, measure disagreement</td><td>N models</td><td>No</td></tr>
+<tr><td>Test time augmentation</td><td>Flip or relight the input, measure disagreement</td><td>N forward passes</td><td>Yes</td></tr>
+<tr><td>Temporal disagreement</td><td>Compare against previous frames</td><td>Very low</td><td>Yes</td></tr>
+</table></div>
+<p>Poggi and colleagues compared many of these for monocular depth <a class="cite" href="references.html#r15" title="On the Uncertainty of Self-Supervised Monocular Depth Estimation">[15]</a>. They judged each method by how much the error drops when the most uncertain pixels are removed first, which is the right question for a safety system. Methods that combine several sources of uncertainty tended to rank errors best. For a pretrained model such as Depth Anything V2 that we do not want to retrain, test time augmentation is the most practical place to start:</p>
+<pre><code>import numpy as np
+
+def depth_with_uncertainty(run_model, image):
+    &quot;&quot;&quot;Cheap uncertainty for a frozen model using test time augmentation.
+
+    run_model(image) -&gt; HxW metric depth. image is an HxWx3 numpy array.
+    &quot;&quot;&quot;
+    preds = [run_model(image),
+             np.fliplr(run_model(np.fliplr(image)))]          # mirrored copy
+    for gamma in (0.8, 1.25):                                 # darker and brighter copy
+        preds.append(run_model(np.clip((image / 255.0) ** gamma * 255, 0, 255)))
+    preds = np.stack(preds)
+    mean = preds.mean(axis=0)
+    std = preds.std(axis=0)
+    rel_unc = std / np.maximum(mean, 1e-3)    # 0.10 means &quot;about plus or minus 10 percent&quot;
+    return mean, rel_unc</code></pre>
+<h2>Using confidence thresholds before giving guidance</h2>
+<figure><svg viewBox="0 0 760 270" role="img" aria-label="Flowchart: depth and uncertainty go into a confidence check that decides between a distance warning and an uncertain message">
+<defs><marker id="a4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#4A1D6E"/></marker></defs>
+<g font-family="Sora,sans-serif" font-size="13" fill="#1D1A2B">
+<rect x="10" y="105" width="120" height="60" rx="10" fill="#EEEBF5" stroke="#5C586E"/><text x="70" y="140" text-anchor="middle">camera frame</text>
+<path d="M135 135 H170" stroke="#4A1D6E" stroke-width="2.5" marker-end="url(#a4)"/>
+<rect x="178" y="95" width="150" height="80" rx="10" fill="#1E1830"/><text x="253" y="130" text-anchor="middle" fill="#fff" font-weight="600">depth d</text><text x="253" y="152" text-anchor="middle" fill="#B9B3CC">uncertainty u</text>
+<path d="M333 135 H368" stroke="#4A1D6E" stroke-width="2.5" marker-end="url(#a4)"/>
+<polygon points="450,75 535,135 450,195 365,135" fill="#FFF4E2" stroke="#F2A33A" stroke-width="2"/>
+<text x="450" y="132" text-anchor="middle" font-weight="600">u / d below</text><text x="450" y="150" text-anchor="middle" font-weight="600">threshold?</text>
+<path d="M535 135 Q560 60 590 60" fill="none" stroke="#2F7A57" stroke-width="2.5" marker-end="url(#a4)"/>
+<text x="545" y="85" fill="#2F7A57">yes</text>
+<rect x="597" y="30" width="155" height="60" rx="10" fill="#EAF4EE" stroke="#2F7A57"/><text x="675" y="56" text-anchor="middle" font-weight="600">speak distance</text><text x="675" y="75" text-anchor="middle" font-size="12">"Obstacle 2 m ahead"</text>
+<path d="M535 135 Q560 210 590 210" fill="none" stroke="#7B3294" stroke-width="2.5" marker-end="url(#a4)"/>
+<text x="545" y="195" fill="#7B3294">no</text>
+<rect x="597" y="180" width="155" height="60" rx="10" fill="#F1EAF7" stroke="#7B3294"/><text x="675" y="206" text-anchor="middle" font-weight="600">say it is unsure</text><text x="675" y="225" text-anchor="middle" font-size="12">"Move camera slowly"</text>
+</g></svg><figcaption><b>Figure 7.</b> Confidence gating. Depth and its uncertainty are checked against a threshold before anything is spoken. Low confidence produces an honest uncertain message instead of a distance. <i>Source: original diagram by the author, building on the uncertainty concepts in <a class="cite" href="references.html#r12" title="What Uncertainties Do We Need in Bayesian Deep Learning for Computer Vision?">[12]</a>.</i></figcaption></figure>
+<p>The relative uncertainty (spread divided by depth) is compared with a threshold. Below it, the system speaks a distance. Above it, the system says it is unsure and asks the user to slow down or pan the camera, which gives the model a fresh view:</p>
+<pre><code>def guidance(zone_depth, zone_unc, near=1.5, tau=0.20):
+    &quot;&quot;&quot;Decide what to say for the walking corridor.
+
+    zone_depth : nearest depth in the center zone (m), e.g. 10th percentile
+    zone_unc   : relative uncertainty at that point (std / mean)
+    &quot;&quot;&quot;
+    if zone_unc &gt; tau:
+        return &quot;Depth estimate uncertain. Move the camera slowly.&quot;
+    if zone_depth &lt; near:
+        return f&quot;Stop. Obstacle about {zone_depth:.1f} meters ahead.&quot;
+    if zone_depth &lt; 3.0:
+        return f&quot;Obstacle about {zone_depth:.0f} meters ahead.&quot;
+    return None   # stay quiet: silence is better than chatter</code></pre>
+<p>The threshold should be chosen on recorded test data rather than guessed. Lowering it makes the system say "unsure" more often but gives fewer confidently wrong distances. For navigation I would favor a low threshold, as long as the "unsure" message does not appear so often that users stop listening.</p>
+<h2>How uncertainty improves safety</h2>
+<p>Uncertainty gives the system a third answer beyond "obstacle" and "clear." That third answer is, in my opinion, the single most important feature for an assistive device, because it is what prevents the confidently wrong guidance described in Part 1.</p>
+<nav class="pager" aria-label="Previous and next"><a href="metric.html"><span>Previous</span>Relative to metric</a><a class="next" href="hard-cases.html"><span>Next</span>Difficult conditions</a></nav><footer>Written by Mustafa Khattak. All diagrams are original unless noted. Citations link to the <a href="references.html">annotated bibliography</a>.</footer></div></main></div></body></html>

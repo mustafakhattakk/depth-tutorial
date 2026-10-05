@@ -1,0 +1,42 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Depth estimation from video | Depth you can trust</title><meta name="description" content="A research tutorial on reliable monocular depth estimation for assistive navigation by Mustafa Khattak.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Sora:wght@400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css"><link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📏</text></svg>"></head><body><div class="layout"><aside class="side" id="side"><a class="brand" href="index.html">Depth you can trust<small>Monocular depth for assistive navigation</small></a><button class="toggle" aria-expanded="false" aria-controls="navbox" onclick="var s=document.getElementById('side');s.classList.toggle('open');this.setAttribute('aria-expanded',s.classList.contains('open'))">Contents</button><div class="navbox" id="navbox"><nav aria-label="Tutorial parts"><ul class="scale"><li><a href="index.html">Home</a></li><li><a href="intro.html"><span class="n">1</span>Introduction and problem</a></li><li><a href="relative-metric.html"><span class="n">2</span>Relative and metric depth</a></li><li><a href="models.html"><span class="n">3</span>Depth models</a></li><li><a href="metric.html"><span class="n">4</span>Relative to metric</a></li><li><a href="uncertainty.html"><span class="n">5</span>Uncertainty</a></li><li><a href="hard-cases.html"><span class="n">6</span>Difficult conditions</a></li><li class="on"><a href="video.html" aria-current="page"><span class="n">7</span>Depth from video</a></li><li><a href="evaluation.html"><span class="n">8</span>Evaluating models</a></li><li><a href="navigation.html"><span class="n">9</span>Assistive navigation</a></li><li><a href="future.html"><span class="n">10</span>Limitations and future</a></li><li><a href="quiz.html">Quiz</a></li><li><a href="references.html">Annotated bibliography</a></li></ul></nav><div class="ends"><span>start</span><span>finish</span></div></div></aside><main id="main"><div class="wrap"><p class="part">Part 7 of 10</p><h1>Depth estimation from video</h1><div class="listen"><span>Listen to this page</span><audio controls preload="none" src="audio/video.mp3">Your browser does not support audio.</audio></div>
+<h2>Single image depth versus video depth</h2>
+<p>A navigation aid sees a continuous video, not one photo. Running a single image model on each frame works, but each frame is solved independently. Small changes in lighting or position can shift the predicted scale, so the distance to the same wall jumps up and down from frame to frame. This is called flicker, and it is a lack of temporal consistency.</p>
+<figure><svg viewBox="0 0 640 280" role="img" aria-label="Line chart: raw per-frame distance estimates jump around while the smoothed estimate decreases steadily as the user walks forward">
+<g font-family="Sora,sans-serif" font-size="12" fill="#1D1A2B">
+<line x1="60" y1="230" x2="610" y2="230" stroke="#1D1A2B"/><line x1="60" y1="230" x2="60" y2="20" stroke="#1D1A2B"/>
+<text x="335" y="265" text-anchor="middle">frame number (30 frames per second)</text>
+<text x="22" y="125" transform="rotate(-90 22 125)" text-anchor="middle">distance to obstacle (m)</text>
+<text x="52" y="45" text-anchor="end">4</text><text x="52" y="140" text-anchor="end">2.5</text><text x="52" y="228" text-anchor="end">1</text>
+<polyline fill="none" stroke="#F2A33A" stroke-width="2" points="70,48 95,70 120,38 145,92 170,60 195,110 220,70 245,125 270,98 295,80 320,140 345,118 370,165 395,128 420,150 445,190 470,155 495,185 520,205 545,175 570,212 595,200"/>
+<polyline fill="none" stroke="#4A1D6E" stroke-width="3.5" points="70,48 120,58 170,72 220,86 270,100 320,118 370,138 420,154 470,170 520,186 570,200 595,206"/>
+<rect x="400" y="30" width="200" height="54" rx="6" fill="#fff" stroke="#DCDAE5"/>
+<line x1="412" y1="48" x2="440" y2="48" stroke="#F2A33A" stroke-width="2"/><text x="448" y="52">raw per frame</text>
+<line x1="412" y1="70" x2="440" y2="70" stroke="#4A1D6E" stroke-width="3.5"/><text x="448" y="74">smoothed (EMA)</text>
+</g></svg><figcaption><b>Figure 9.</b> Flicker in per frame depth. Raw estimates (orange) jump between frames while the user walks toward an obstacle. Smoothing (purple) follows the real downward trend. <i>Source: original illustrative diagram by the author with simulated values, based on the problem described in <a class="cite" href="references.html#r19" title="Consistent Video Depth Estimation">[19]</a>.</i></figcaption></figure>
+<h2>Using information from consecutive frames</h2>
+<p>Video offers something a single image cannot: the camera moves, so the same surface is seen from slightly different positions, which gives true geometric depth cues. Monodepth2 <a class="cite" href="references.html#r18" title="Digging Into Self-Supervised Monocular Depth Estimation (Monodepth2)">[18]</a> uses this during training, learning depth without any labels by predicting how one frame should warp into the next. Luo and colleagues <a class="cite" href="references.html#r19" title="Consistent Video Depth Estimation">[19]</a> use it at test time, fine tuning a network on a specific video so that all frames agree geometrically. Their results are very stable, but the process runs offline and takes far too long for live guidance.</p>
+<h2>A practical streaming approach</h2>
+<p>For a live phone app, a light filter over the per frame distance is a good first step. An exponential moving average (EMA) blends each new reading with the running estimate. A plain EMA has one dangerous property for our use: it reacts slowly to a real obstacle that suddenly appears. The version below trusts any reading that is much closer than expected immediately and only smooths readings that are farther:</p>
+<pre><code>class DistanceSmoother:
+    &quot;&quot;&quot;Exponential moving average that still reacts fast to real hazards.&quot;&quot;&quot;
+    def __init__(self, alpha=0.3, jump=0.35):
+        self.alpha, self.jump, self.value = alpha, jump, None
+
+    def update(self, d):
+        if self.value is None:
+            self.value = d
+        elif d &lt; self.value * (1 - self.jump):
+            self.value = d          # sudden much closer reading: trust it right away
+        else:
+            self.value = self.alpha * d + (1 - self.alpha) * self.value
+        return self.value</code></pre>
+<p>This asymmetry is deliberate. A false "closer" reading causes a needless warning. A delayed "closer" reading can cause a collision.</p>
+<h2>Camera movement and moving objects</h2>
+<p>A walking user moves forward about one meter every second, so a distance that shrinks steadily is expected and is not noise. Smoothing should therefore follow the trend, not freeze the value. Moving people break a different assumption: geometric methods assume the world is still, so a person walking toward the user can confuse them. Here the single image model is actually helpful, because it estimates each frame on its own.</p>
+<h2>Why stable estimates matter for a walking user</h2>
+<p>If spoken distances jump between 1 meter and 3 meters, the user cannot build a mental picture and will soon stop trusting the device. Stability is also a signal: if the depth of one region keeps changing while the camera is still, that region is probably glass, a mirror or a moving object, and its uncertainty should be raised.</p>
+<nav class="pager" aria-label="Previous and next"><a href="hard-cases.html"><span>Previous</span>Difficult conditions</a><a class="next" href="evaluation.html"><span>Next</span>Evaluating models</a></nav><footer>Written by Mustafa Khattak. All diagrams are original unless noted. Citations link to the <a href="references.html">annotated bibliography</a>.</footer></div></main></div></body></html>

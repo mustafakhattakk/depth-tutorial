@@ -1,0 +1,65 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Converting relative depth into metric depth | Depth you can trust</title><meta name="description" content="A research tutorial on reliable monocular depth estimation for assistive navigation by Mustafa Khattak.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Sora:wght@400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css"><link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📏</text></svg>"></head><body><div class="layout"><aside class="side" id="side"><a class="brand" href="index.html">Depth you can trust<small>Monocular depth for assistive navigation</small></a><button class="toggle" aria-expanded="false" aria-controls="navbox" onclick="var s=document.getElementById('side');s.classList.toggle('open');this.setAttribute('aria-expanded',s.classList.contains('open'))">Contents</button><div class="navbox" id="navbox"><nav aria-label="Tutorial parts"><ul class="scale"><li><a href="index.html">Home</a></li><li><a href="intro.html"><span class="n">1</span>Introduction and problem</a></li><li><a href="relative-metric.html"><span class="n">2</span>Relative and metric depth</a></li><li><a href="models.html"><span class="n">3</span>Depth models</a></li><li class="on"><a href="metric.html" aria-current="page"><span class="n">4</span>Relative to metric</a></li><li><a href="uncertainty.html"><span class="n">5</span>Uncertainty</a></li><li><a href="hard-cases.html"><span class="n">6</span>Difficult conditions</a></li><li><a href="video.html"><span class="n">7</span>Depth from video</a></li><li><a href="evaluation.html"><span class="n">8</span>Evaluating models</a></li><li><a href="navigation.html"><span class="n">9</span>Assistive navigation</a></li><li><a href="future.html"><span class="n">10</span>Limitations and future</a></li><li><a href="quiz.html">Quiz</a></li><li><a href="references.html">Annotated bibliography</a></li></ul></nav><div class="ends"><span>start</span><span>finish</span></div></div></aside><main id="main"><div class="wrap"><p class="part">Part 4 of 10</p><h1>Converting relative depth into metric depth</h1><div class="listen"><span>Listen to this page</span><audio controls preload="none" src="audio/metric.mp3">Your browser does not support audio.</audio></div>
+<h2>Why foundation models start with relative depth</h2>
+<p>The strongest depth models learn from huge, mixed collections of images, and only relative supervision lets those collections be combined. Metric ability is added afterwards. There are two practical routes: fine tune the model on metric data, or calibrate the relative output with a few known measurements at run time.</p>
+<h2>Route A: metric fine tuning</h2>
+<p>Here the pretrained encoder is kept and the model is trained further on data with real distances and known cameras. Depth Anything V2's metric models do exactly this <a class="cite" href="references.html#r9" title="Depth Anything V2">[9]</a>. ZoeDepth <a class="cite" href="references.html#r10" title="ZoeDepth: Zero-shot Transfer by Combining Relative and Metric Depth">[10]</a> adds a lightweight metric head that predicts depth as a mixture of adaptive "bins," plus a small router that picks an indoor or outdoor head for each image. Depth Pro <a class="cite" href="references.html#r11" title="Depth Pro: Sharp Monocular Metric Depth in Less Than a Second">[11]</a> goes further and estimates the camera's focal length itself, so it does not rely on phone metadata. Using a fine tuned model takes only a few lines:</p>
+<pre><code># pip install transformers torch pillow
+from transformers import pipeline
+from PIL import Image
+
+# Depth Anything V2 fine tuned on indoor metric data (see the model card on Hugging Face)
+depth = pipeline(&quot;depth-estimation&quot;,
+                 model=&quot;depth-anything/Depth-Anything-V2-Metric-Indoor-Small-hf&quot;)
+
+result = depth(Image.open(&quot;hallway.jpg&quot;))
+depth_m = result[&quot;predicted_depth&quot;].squeeze().numpy()   # values in meters
+print(&quot;closest point:&quot;, depth_m.min().round(2), &quot;m&quot;)</code></pre>
+<h2>Route B: calibrate with known distances</h2>
+<p>If a relative model is accurate up to scale and shift in inverse depth, two or more pixels with known distance are enough to recover the missing numbers. This is the algorithm I would use on a phone that has a few reliable distance readings, for example from AR plane detection, a single point time of flight sensor, or a known camera height above the floor.</p>
+<ol>
+<li>Run the relative model to get a disparity map.</li>
+<li>Collect pixels with known depth and convert those depths to inverse depth.</li>
+<li>Fit a straight line between predicted disparity and true inverse depth with least squares. Its slope is <i>s</i> and its intercept is <i>t</i>.</li>
+<li>Apply the line to every pixel and invert to get meters.</li>
+<li>Check the fit error. A large residual means the scene does not follow the model's assumptions, which is itself a warning sign.</li>
+</ol>
+<figure><svg viewBox="0 0 600 300" role="img" aria-label="Scatter plot of predicted relative disparity against true inverse depth with a fitted line">
+<g font-family="Sora,sans-serif" font-size="12" fill="#1D1A2B">
+<line x1="60" y1="250" x2="570" y2="250" stroke="#1D1A2B"/><line x1="60" y1="250" x2="60" y2="20" stroke="#1D1A2B"/>
+<text x="315" y="285" text-anchor="middle">model output (relative disparity)</text>
+<text x="20" y="140" transform="rotate(-90 20 140)" text-anchor="middle">true 1 / depth (1/m)</text>
+<line x1="70" y1="238" x2="560" y2="35" stroke="#C2427A" stroke-width="3"/>
+<g fill="#7B3294"><circle cx="110" cy="215" r="5"/><circle cx="160" cy="205" r="5"/><circle cx="200" cy="176" r="5"/><circle cx="250" cy="165" r="5"/><circle cx="300" cy="138" r="5"/><circle cx="350" cy="124" r="5"/><circle cx="390" cy="100" r="5"/><circle cx="440" cy="88" r="5"/><circle cx="490" cy="62" r="5"/><circle cx="530" cy="52" r="5"/></g>
+<rect x="330" y="200" width="225" height="40" rx="6" fill="#FFF4E2" stroke="#F2A33A"/>
+<text x="442" y="225" text-anchor="middle" font-weight="600">fitted line: s x + t</text>
+</g></svg><figcaption><b>Figure 6.</b> Scale and shift alignment. Each dot is a pixel with a known distance. The fitted line converts the model's relative disparity into true inverse depth, which is then inverted to meters. <i>Source: original diagram by the author, based on the alignment used in <a class="cite" href="references.html#r3" title="Towards Robust Monocular Depth Estimation: Mixing Datasets for Zero-shot Cross-dataset Transfer">[3]</a>.</i></figcaption></figure>
+<pre><code>import numpy as np
+
+def align_scale_shift(pred_disp, known_depth, mask):
+    &quot;&quot;&quot;Turn relative disparity into metric depth using a few known distances.
+
+    pred_disp   : HxW relative disparity from MiDaS or Depth Anything (bigger = closer)
+    known_depth : HxW array of measured depths in meters (only valid where mask is True)
+    mask        : HxW boolean array marking the pixels whose depth we know
+    &quot;&quot;&quot;
+    x = pred_disp[mask].ravel()
+    y = 1.0 / known_depth[mask].ravel()            # the model is affine in inverse depth
+    A = np.stack([x, np.ones_like(x)], axis=1)      # columns: x and 1
+    (s, t), *_ = np.linalg.lstsq(A, y, rcond=None) # least squares fit of y ≈ s*x + t
+    disp_metric = np.clip(s * pred_disp + t, 1e-3, None)   # avoid dividing by zero
+    return 1.0 / disp_metric, s, t                  # depth in meters, plus the fit</code></pre>
+<h2>A worked example</h2>
+<p>Suppose the model outputs disparity 0.80 at a pixel we know is 1.0 meter away, and 0.20 at a pixel 4.0 meters away. The true inverse depths are 1.0 and 0.25. Solving 0.80<i>s</i> + <i>t</i> = 1.0 and 0.20<i>s</i> + <i>t</i> = 0.25 gives <i>s</i> = 1.25 and <i>t</i> = 0. A third pixel with predicted disparity 0.50 then maps to inverse depth 0.625, which is 1.6 meters. With more than two anchors, least squares averages out their noise.</p>
+<h2>Comparing the two routes</h2>
+<div class="tbl"><table>
+<tr><th>Approach</th><th>Strengths</th><th>Weaknesses</th><th>Use when</th></tr>
+<tr><td>Metric fine tuned model (Depth Anything V2 Metric, ZoeDepth)</td><td>No extra sensor, one forward pass</td><td>Can be biased on new cameras and scene types</td><td>Plain phone camera, scenes similar to training</td></tr>
+<tr><td>Metric model with focal estimation (Depth Pro, Metric3D)</td><td>Handles different cameras</td><td>Heavier models, slower on phones</td><td>Unknown or varied cameras, offline use</td></tr>
+<tr><td>Relative model plus calibration</td><td>Uses strong zero shot models, scale is anchored to reality</td><td>Needs reliable anchors in every frame or a stable scale</td><td>Phone with AR tracking or a small range sensor</td></tr>
+</table></div>
+<p>My recommendation for an assistive app is to combine them: run a metric model, but whenever reliable anchors are available, compare against them. If the two disagree by more than about 20 percent, treat the frame as uncertain. This turns calibration into a free reliability check.</p>
+<nav class="pager" aria-label="Previous and next"><a href="models.html"><span>Previous</span>Depth models</a><a class="next" href="uncertainty.html"><span>Next</span>Uncertainty</a></nav><footer>Written by Mustafa Khattak. All diagrams are original unless noted. Citations link to the <a href="references.html">annotated bibliography</a>.</footer></div></main></div></body></html>
